@@ -439,6 +439,8 @@ if __name__ == "__main__":
     ver = "2.2"
     logger.info("------------------------------------------------------------------")
     logger.info(f"雨云自动签到工作流 v{ver} by 筱序二十 ~")
+    logger.info("推广链接https://www.rainyun.com/bv_?s=rqd")
+    logger.info("支持我https://rewards.qxzhan.cn/")
     logger.info("Github发布页: https://github.com/scfcn/Rainyun-Qiandao")
     logger.info("------------------------------------------------------------------")
     
