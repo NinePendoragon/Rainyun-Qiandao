@@ -431,7 +431,7 @@ def sign_in_account(user, pwd, debug=False, headless=False):
         headless: 是否使用无头模式
         
     Returns:
-        bool: 签到是否成功
+        tuple: (成功状态, 用户名, 积分信息, 错误信息)
     """
     # 连接超时等待
     timeout = 15
@@ -592,41 +592,17 @@ def sign_in_account(user, pwd, debug=False, headless=False):
             logger.info(f"当前剩余积分: {current_points} | 约为 {current_points / 2000:.2f} 元")
             logger.info("任务执行成功！")
             
-            # --- START OF MODIFICATION: 添加成功通知逻辑 ---
-            notification_title = "✅ 雨云自动签到成功"
-            notification_content = f"登录用户: {user}\n当前剩余积分: {current_points} | 约为 {current_points / 2000:.2f} 元"
-            try:
-                send(notification_title, notification_content)
-            except Exception as e:
-                logger.error(f"发送通知失败: {e}")
-            # --- END OF MODIFICATION ---
-            
-            return True
+            return True, user, current_points, None
         else:
             logger.error("登录失败！")
             
-            # --- START OF MODIFICATION: 添加失败通知逻辑 ---
-            notification_title = "❌ 雨云自动签到失败"
-            notification_content = f"登录用户: {user}\n\n登录失败，未能进入仪表盘页面，请检查账号密码或验证码处理逻辑。"
-            try:
-                send(notification_title, notification_content)
-            except Exception as e:
-                logger.error(f"发送通知失败: {e}")
-            # --- END OF MODIFICATION ---
-            
-            return False
+            return False, user, 0, "登录失败，未能进入仪表盘页面，请检查账号密码或验证码处理逻辑。"
 
     except Exception as e: # 【新增】捕获未处理的异常
         err_msg = f"脚本运行期间发生致命异常: {str(e)}"
         logger.error(err_msg, exc_info=True)
-        # --- START OF MODIFICATION: 添加致命错误通知 ---
-        try:
-            send("雨云脚本运行异常", f"用户: {user}\n{err_msg}")
-        except Exception as e_send:
-            logger.error(f"发送通知失败: {e_send}")
-        # --- END OF MODIFICATION ---
         
-        return False
+        return False, user, 0, err_msg
 
     finally: # 【新增】确保浏览器关闭
         if driver:
@@ -697,10 +673,40 @@ if __name__ == "__main__":
     
     logger.info(f"共读取到 {len(accounts)} 个账户")
     
+    # 收集所有账户的签到结果
+    results = []
+    
     # 遍历所有账户，依次执行签到
     for i, (user, pwd) in enumerate(accounts, 1):
         logger.info(f"\n=== 开始处理第 {i} 个账户: {user} ===")
-        sign_in_account(user, pwd, debug=debug, headless=headless)
+        result = sign_in_account(user, pwd, debug=debug, headless=headless)
+        results.append(result)
         logger.info(f"=== 第 {i} 个账户处理完成 ===\n")
     
     logger.info("所有账户处理完成")
+    
+    # 生成统一通知
+    success_count = sum(1 for r in results if r[0])
+    total_count = len(results)
+    
+    if success_count == total_count:
+        notification_title = f"✅ 雨云自动签到完成 - 全部成功"
+    elif success_count > 0:
+        notification_title = f"⚠️ 雨云自动签到完成 - 部分成功 ({success_count}/{total_count})"
+    else:
+        notification_title = f"❌ 雨云自动签到完成 - 全部失败"
+    
+    notification_content = f"雨云自动签到结果汇总：\n\n总账户数: {total_count}\n成功账户数: {success_count}\n失败账户数: {total_count - success_count}\n\n详细结果：\n"
+    
+    for i, (success, user, points, error_msg) in enumerate(results, 1):
+        if success:
+            notification_content += f"{i}. ✅ {user}\n   积分: {points} | 约 {points / 2000:.2f} 元\n"
+        else:
+            notification_content += f"{i}. ❌ {user}\n   错误: {error_msg}\n"
+    
+    # 发送统一通知
+    try:
+        send(notification_title, notification_content)
+        logger.info("统一通知发送成功")
+    except Exception as e:
+        logger.error(f"发送通知失败: {e}")
