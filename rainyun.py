@@ -398,9 +398,13 @@ def sign_in_account(user, pwd, debug=False, headless=False):
                         
                         try:
                             WebDriverWait(driver, 15, poll_frequency=0.25).until(
-                                EC.visibility_of_element_located((By.ID, "tcaptcha_iframe_dy"))
+                                #EC.visibility_of_element_located((By.ID, "tcaptcha_iframe_dy"))
+                                EC.presence_of_element_located((By.ID, "tcaptcha_iframe_dy"))
                             )
-                            wait.until(EC.frame_to_be_available_and_switch_to_it((By.ID, "tcaptcha_iframe_dy")))
+                            #wait.until(EC.frame_to_be_available_and_switch_to_it((By.ID, "tcaptcha_iframe_dy")))
+                            WebDriverWait(driver, 15, poll_frequency=0.25).until(
+                                EC.frame_to_be_available_and_switch_to_it((By.ID, "tcaptcha_iframe_dy"))
+                            )
                             logger.info("处理验证码")
                             process_captcha()
                             driver.switch_to.default_content()
